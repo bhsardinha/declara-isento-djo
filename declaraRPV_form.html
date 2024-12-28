@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Declaração</title>
+    <style>
+        /* Basic styling for the form */
+        body {
+            font-family: Arial, sans-serif; /* Set a font for the document */
+            font-size: 12pt; /* Set font size */
+            line-height: 1.5; /* Set line height for readability */
+            margin: 0; /* Remove default body margin */
+            padding: 0; /* Remove default body padding */
+        }
+    
+        .container {
+            margin: 20mm; /* Set margins for A4 size */
+            padding: 10px; /* Inner padding for container */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+    
+        .form-group {
+            align-self: center;
+            margin-bottom: 15px;
+            margin-left: 10px;
+        }
+    
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+    
+        input[type="text"] {
+            width: 95%;
+            padding: 8px;
+            align-self: center;
+            box-sizing: border-box;
+        }
+    
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    
+        button:hover {
+            background-color: #0056b3;
+        }
+    
+        .output {
+            margin-top: 20px;
+            border: 0px solid #ccc;
+            padding: 30px;
+            display: none; /* Initially hidden */
+            position: relative;
+        }
+    
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+    
+            .output, .output * {
+                visibility: visible;
+            }
+    
+            .output {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0; /* Reset margin for print */
+                padding: 50; /* Reset padding for print */
+                box-sizing: border-box; /* Ensure padding is included in total width */
+            }
+        }
+    
+        .declaration-title {
+            text-align: center; /* Center the title */
+            font-size: 16pt; /* Title font size */
+            font-weight: bold; /* Make title bold */
+            margin-bottom: 20px; /* Space below the title */
+        }
+    
+        .declaration-body {
+            margin-bottom: 10px; /* Space between paragraphs */
+            text-align: justify; /* Justify the text */
+        }
+    
+        .right-aligned {
+            text-align: right; /* Align text to the right */
+            margin-top: 20px; /* Space above the date */
+        }
+    
+        .signature-line {
+            margin-top: 40px; /* Space above the signature line */
+            text-align: center; /* Center the signature line */
+            margin-bottom: 20px; /* Space below the signature line */
+        }
+    </style>
+    
+   
+</head>
+<body>
+    <h1>Gerar Declaração</h1>
+    <form id="declarationForm">
+        <div class="form-group">
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" required>
+        </div>
+        <div class="form-group">
+            <label for="endereco">Endereço:</label>
+            <input type="text" id="endereco" required>
+        </div>
+        <div class="form-group">
+            <label for="cpfCnpj">CPF/CNPJ:</label>
+            <input type="text" id="cpfCnpj" required>
+        </div>
+        <div class="form-group">
+            <label for="processo">Processo:</label>
+            <input type="text" id="processo" required>
+        </div>
+        <div class="form-group">
+            <label for="vara">Vara:</label>
+            <input type="text" id="vara" required>
+        </div>
+        <div class="form-group">
+            <label for="localidade">Localidade:</label>
+            <input type="text" id="localidade" required>
+        </div>
+        <div class="form-group">
+            <label for="valor">Valor:</label>
+            <input type="text" id="valor" required>
+        </div>
+        <div class="form-group">
+            <label for="isCNPJ">É CNPJ?</label>
+            <input type="checkbox" id="isCNPJ">
+        </div>
+        <button type="submit">Gerar Declaração</button>
+    </form>
+
+    <div class="output" id="output"></div>
+    <button id="printButton" style="display:none; margin-top: 20px;">Imprimir Declaração</button>
+
+    <script>
+        // Function definitions (formatCPF, formatCNPJ, formatCurrency, currencyToWords, generateDeclaration)
+
+
+        function formatCPF(cpfInput) {
+            return cpfInput.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); // Format as CPF
+        }
+
+        function formatCNPJ(cnpjInput) {
+            return cnpjInput.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5'); // Format as CNPJ
+        }
+
+        function formatCurrency(value) {
+            const numValue = parseFloat(value);
+            return numValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function currencyToWords(amount) {
+    const units = [
+        '', 'um', 'dois', 'três', 'quatro', 'cinco',
+        'seis', 'sete', 'oito', 'nove', 'dez',
+        'onze', 'doze', 'treze', 'quatorze', 'quinze',
+        'dezesseis', 'dezessete', 'dezoito', 'dezenove'
+    ];
+    const tens = [
+        '', '', 'vinte', 'trinta', 'quarenta', 'cinquenta',
+        'sessenta', 'setenta', 'oitenta', 'noventa'
+    ];
+    const hundreds = [
+        '', 'cento', 'duzentos', 'trezentos', 'quatrocentos',
+        'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'
+    ];
+
+    if (amount === 0) {
+        return 'zero reais';
+    }
+
+    let integerPart = Math.floor(amount);
+    let decimalPart = Math.round((amount - integerPart) * 100);
+    
+    let words = [];
+
+    function convertHundreds(num) {
+        let result = [];
+        if (num === 100) {
+            return 'cem';  // Caso especial para exatamente 100
+        }
+        if (num >= 100) {
+            result.push(hundreds[Math.floor(num / 100)]);
+            num %= 100;
+        }
+        if (num >= 20) {
+            result.push(tens[Math.floor(num / 10)]);
+            num %= 10;
+        }
+        if (num > 0) {
+            result.push(units[num]);
+        }
+        return result.join(' e ');
+    }
+
+    // Tratamento para milhões
+    if (integerPart >= 1000000) {
+        const millions = Math.floor(integerPart / 1000000);
+        words.push(millions === 1 ? 'um milhão' : convertHundreds(millions) + ' milhões');
+        integerPart %= 1000000;
+    }
+
+    // Tratamento para milhares
+    if (integerPart >= 1000) {
+        const thousands = Math.floor(integerPart / 1000);
+        words.push(thousands === 1 ? 'mil' : convertHundreds(thousands) + ' mil');
+        integerPart %= 1000;
+    }
+
+    // Tratamento para o restante
+    if (integerPart > 0) {
+        words.push(convertHundreds(integerPart));
+    }
+
+    // Adicionar 'real/reais' no final
+    if (Math.floor(amount) === 1) {
+        words.push('real');
+    } else if (Math.floor(amount) > 1) {
+        words.push('reais');
+    }
+
+    // Tratamento para a parte decimal (centavos)
+    if (decimalPart > 0) {
+        let centsWords = [];
+
+        if (decimalPart < 20) {
+            centsWords.push(units[decimalPart]);
+        } else {
+            const cTens = Math.floor(decimalPart / 10);
+            centsWords.push(tens[cTens]);
+            decimalPart %= 10;
+
+            if (decimalPart > 0) {
+                centsWords.push('e');
+                centsWords.push(units[decimalPart]);
+            }
+        }
+
+        // Adicionar 'centavo/centavos'
+        if (Math.round((amount - Math.floor(amount)) * 100) === 1) {
+            centsWords.push('centavo');
+        } else {
+            centsWords.push('centavos');
+        }
+
+        words.push(`e ${centsWords.join(' ')}`);
+    }
+
+    return words.join(' ').trim();
+}
+
+
+        function generateDeclaration(event) {
+            event.preventDefault(); // Prevent form submission
+
+            const isCNPJ = document.getElementById('isCNPJ').checked;
+
+            const data = {
+                nome: document.getElementById('nome').value.trim(),
+                endereco: document.getElementById('endereco').value.trim(),
+                cpf: isCNPJ ? formatCNPJ(document.getElementById('cpfCnpj').value.trim().replace(/\D/g, '')) : formatCPF(document.getElementById('cpfCnpj').value.trim().replace(/\D/g, '')),
+                processo: document.getElementById('processo').value.trim(),
+                vara: document.getElementById('vara').value.trim(),
+                localidade: document.getElementById('localidade').value.trim(),
+                valor: document.getElementById('valor').value.trim(),
+            };
+
+            // Prepare X placeholders based on CNPJ/CPF check
+            const x1 = isCNPJ ? '' : 'X'; // Mark x1 with X if CPF
+            const x2 = isCNPJ ? 'X' : ''; // Mark x2 with X if CNPJ
+
+            const declarationTemplate = `
+            <div class="declaration-title">DECLARAÇÃO</div><br><br>
+    <div class="declaration-body">
+        {nome}, residente ou domiciliado(a) {endereco}, inscrito(a) no CPF/CNPJ sob o nº {cpf}, 
+        para fins da não retenção do imposto de renda de que trata o art. 27 da Lei nº 10.833, 
+        de 29 de dezembro de 2003, sobre rendimentos a serem recebidos em cumprimento de 
+        decisão da Justiça Federal, conforme Processo nº {processo}, da {vara}ª Vara da 
+        Seção/Subseção Judiciária de {localidade}, pagos pelo(a) Banco do Brasil, declara que:
+    </div>
+    <div class="declaration-body">
+        ( {x1} ) o montante de  {valor} ({valorExtenso}) e devidos acréscimos constitui rendimento 
+        isento ou não tributável; <br>
+        ( {x2} ) está inscrita no Sistema Integrado de Pagamento de Impostos e Contribuições das 
+        Microempresas e das Empresas de Pequeno Porte (Simples).
+    </div>
+    <div class="declaration-body">
+        O(a) beneficiário(a) fica ciente de que a falsidade na prestação destas informações o(a) 
+        sujeitará, juntamente com as demais pessoas que para ela concorram, às penalidades 
+        previstas na legislação tributária e penal, relativas à falsidade ideológica (art. 299 do 
+        Código Penal) e ao crime contra a ordem tributária (art. 1º da Lei nº 8.137, de 27 de 
+        dezembro de 1990).
+    </div>
+    <div class="right-aligned">
+        {municipio_uf}, {current_date}
+    </div>
+    <div class="signature-line">
+        <br><br><br><br>
+        __________________________________________________<br>
+        Assinatura do(a) beneficiário(a) ou de seu representante legal<br><br><br><br>
+        __________________________________________________<br>
+        Abono da assinatura pela instituição financeira
+    </div>
+`;
+
+            const municipio_uf = data.localidade || '[Município - UF]';
+            const current_date = new Date().toLocaleDateString('pt-BR', {
+    day: 'numeric', // Display day as a number
+    month: 'long', // Display full month name
+    year: 'numeric' // Display year as a number
+});
+
+            // Use currencyToWords function
+            const valorNumerico = parseFloat(data.valor.replace(/\./g, '').replace(',', '.'));
+            const valorExtenso = currencyToWords(valorNumerico);
+
+            const declarationText = declarationTemplate
+                .replace(/{nome}/g, data.nome)
+                .replace(/{endereco}/g, data.endereco)
+                .replace(/{cpf}/g, data.cpf)
+                .replace(/{processo}/g, data.processo)
+                .replace(/{vara}/g, data.vara)
+                .replace(/{localidade}/g, data.localidade)
+                .replace(/{valor}/g, formatCurrency(valorNumerico))
+                .replace(/{valorExtenso}/g, valorExtenso)
+                .replace(/{municipio_uf}/g, municipio_uf)
+                .replace(/{current_date}/g, current_date)
+                .replace(/{x1}/g, x1)
+                .replace(/{x2}/g, x2);
+
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = declarationText;
+            outputDiv.style.display = 'block'; // Show the output div
+            document.getElementById('printButton').style.display = 'inline-block'; // Show the print button
+        }
+
+        function printDeclaration() {
+            window.print(); // Trigger the print dialog
+        }
+
+        document.getElementById('declarationForm').addEventListener('submit', generateDeclaration);
+        document.getElementById('printButton').addEventListener('click', printDeclaration);
+    </script>
+</body>
+</html>

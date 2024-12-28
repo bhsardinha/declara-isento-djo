@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+    <!-- FORMATTING -->
+
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerar Declaração</title>
+     <!-- Bootstrap CSS -->
+     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Same styling as before */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        textarea, input[type="text"] {
+            width: 100%; /* Reduce the width */
+            padding: 4px; /* Decrease padding */
+            margin: 5px 0; /* Reduce margin */
+            font-size: 12px; /* Make the text smaller */
+            box-sizing: border-box;
+        }
+
+        
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .output {
+            margin-top: 20px;
+            padding: 20px;
+            border: 0px;
+            display: none;
+        }
+        
+        .declaration-title {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        
+        .declaration-body {
+            margin-top: 15px;
+            text-align: justify;
+        }
+        
+        .right-aligned {
+            text-align: right;
+            margin-top: 20px;
+        }
+        
+        .signature-line {
+            margin-top: 40px;
+            text-align: left;
+        }
+        
+        /* PRINTING */
+        @media print {
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
+        
+            body * {
+                visibility: hidden;
+            }
+        
+            .output, .output * {
+                visibility: visible;
+            }
+        
+            .output {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: auto;
+                padding: 0;
+                margin: 0;
+                box-sizing: border-box;
+            }
+        }
+        </style>
+       
+
+
+
+        
+</head>
+
+    <!-- VISUAL COMPONENTS OF THE HTML PAGE -->
+
+
+<body>
+
+    <div class="form-container"></div>
+    <h1>Declaração de isento RPV</h1>
+
+ 
+    <input type="text" id="endereco" placeholder="Digite o endereço aqui">
+    <br>
+    
+    <textarea id="inputArea" rows="15" cols="80" placeholder="Cole os dados dp Ctrl+A da tela do DJO aqui (Ctrl + V)"></textarea>
+    <br>
+
+    <label for="isCNPJ" style="font-size: 16pt;">É CNPJ?</label>
+
+    <input type="checkbox" id="isCNPJ" />
+    <br><br>
+
+    <div class="form-group">
+        <a href="#" class="btn-link" data-toggle="collapse" data-target="#advancedOptions" aria-expanded="false" aria-controls="advancedOptions">
+            Opções Avançadas
+        </a>
+        <div id="advancedOptions" class="collapse">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="disableFormatting">
+                <label class="form-check-label" for="disableFormatting">
+                    Desativar formatação do número do processo
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    
+    <button id="parseButton">Gerar Declaração</button>
+    <br>
+    
+    <div class="output" id="output"></div>
+    <br>
+    
+    <button id="printButton" style="display: none; margin-top: 20px;">Imprimir Declaração</button>
+</div>
+
+<div class="output-container" style="display: none;">
+    <h1>Generated Declaration</h1>
+    <p>This is the content that will be printed.</p>
+</div>
+
+    <!-- JAVASCRIPT -->
+
+<!-- Bootstrap JS (for Collapse functionality) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function formatCPFOrCNPJ(value, isCNPJ) {
+        // Remove non-digit characters
+        value = value.replace(/\D/g, '');
+        // Pad with leading zeros if necessary
+        if (isCNPJ) {
+            while (value.length < 14) {
+                value = '0' + value;
+            }
+            // CNPJ: 00.000.000/0000-00
+            return value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+        } else {
+            while (value.length < 11) {
+                value = '0' + value;
+            }
+            // CPF: 000.000.000-00
+            return value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        }
+}
+
+        function getCurrentDate() {
+            const today = new Date();
+            const monthNames = [
+                "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+            ];
+            const day = today.getDate();
+            const month = monthNames[today.getMonth()];
+            const year = today.getFullYear();
+            return `${day} de ${month} de ${year}`;
+        }
+
+        function formatCurrency(value) {
+            return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function formatProcesso(processo) {
+            const disableFormatting = document.getElementById('disableFormatting').checked;
+
+            if (disableFormatting) {
+                // Return the raw value without formatting
+                return processo;
+            }
+
+            // Remove any non-numeric characters for consistency
+            let cleanProcesso = processo.replace(/\D/g, "");
+
+            // Pad the number with leading zeros to ensure it has exactly 20 digits
+            cleanProcesso = cleanProcesso.padStart(20, '0');
+
+            // Check if the process number has 20 digits
+            if (cleanProcesso.length === 20) {
+                // Format as NNNNNNN-DD.AAAA.J.TR.OOOO
+                return cleanProcesso.slice(0, 7) + '-' + cleanProcesso.slice(7, 9) + '.' + cleanProcesso.slice(9, 13) + '.' + cleanProcesso.slice(13, 14) + '.' + cleanProcesso.slice(14, 16) + '.' + cleanProcesso.slice(16, 20);
+            } else {
+                return "Número de processo inválido.";
+            }
+        }
+
+        function currencyToWords(amount) {
+            const units = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+            const tens = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+            const hundreds = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+            if (amount === 0) return 'zero reais';
+
+            let integerPart = Math.floor(amount);
+            let decimalPart = Math.round((amount - integerPart) * 100);
+
+            const convertHundreds = num => {
+                if (num === 100) return 'cem';
+                let result = [];
+                if (num >= 100) result.push(hundreds[Math.floor(num / 100)]);
+                num %= 100;
+                if (num >= 20) result.push(tens[Math.floor(num / 10)]);
+                num %= 10;
+                if (num > 0) result.push(units[num]);
+                return result.join(' e ');
+            };
+
+            let words = [];
+            if (integerPart >= 1000) {
+                const thousands = Math.floor(integerPart / 1000);
+                words.push(thousands === 1 ? 'mil' : convertHundreds(thousands) + ' mil');
+                integerPart %= 1000;
+            }
+            if (integerPart > 0) words.push(convertHundreds(integerPart));
+            words.push(Math.floor(amount) === 1 ? 'real' : 'reais');
+
+            if (decimalPart > 0) {
+                const centsWords = decimalPart < 20
+                    ? units[decimalPart]
+                    : tens[Math.floor(decimalPart / 10)] + (decimalPart % 10 ? ' e ' + units[decimalPart % 10] : '');
+                words.push(`e ${centsWords} centavos`);
+            }
+
+            return words.join(' ').trim();
+        }
+
+      
+        // GENERATE THE TEMPLATE    
+        
+        document.getElementById('parseButton').addEventListener('click', () => {
+            const input = document.getElementById('inputArea').value;
+            const endereco = document.getElementById('endereco').value;
+            const isCNPJ = document.getElementById('isCNPJ').checked;  // Check if CNPJ is selected
+
+            const patterns = {
+                nome: /Requerente\s*:\s*(.+?)\s*CPF\/CNPJ:/,
+                cpf: /CPF\/CNPJ:\s*([\d./-]+)/,
+                processo: /Ação originária\s*:\s*(\d+)/,
+                vara: /Deprecante\s*:\s*(.+)/,
+                tribunal: /Tribunal\s*:\s*(.+)/,
+                localidade: /Seção judiciária\s*:\s*(.+)/,
+                valor: /Saldo capital   \s*:\s*([\d,.]+)/,
+            };
+
+            const data = {
+                nome: input.match(patterns.nome)?.[1]?.trim() || "N/A",
+                cpf: formatCPFOrCNPJ(input.match(patterns.cpf)?.[1]?.replace(/\D/g, '') || "N/A", isCNPJ),
+                processo: formatProcesso(input.match(patterns.processo)?.[1]?.trim() || "N/A"), // Use formatProcesso here
+                tribunal: input.match(patterns.tribunal)?.[1]?.trim() || "N/A",
+                vara: input.match(patterns.vara)?.[1]?.trim() || "N/A",
+                localidade: input.match(patterns.localidade)?.[1]?.trim() || "N/A",
+                valor: formatCurrency(input.match(patterns.valor)?.[1]?.replace('.', '').replace(',', '.') || "0"),
+                valorExtenso: currencyToWords(parseFloat(input.match(patterns.valor)?.[1]?.replace('.', '').replace(',', '.') || 0)),
+                currentDate: getCurrentDate(),
+                endereco: document.getElementById('endereco').value || "N/A" // Added endereco here
+            };
+
+            const x1 = isCNPJ ? " " : "X";
+            const x2 = isCNPJ ? "X" : " ";
+
+            const declarationTemplate = `
+        <div class="declaration-title">Declaração de Isenção de Imposto de Renda</div>
+        <br><br>
+        <div class="declaration-body">
+            ${data.nome}, residente ou domiciliado(a) à ${data.endereco}, inscrito(a) no CPF/CNPJ sob o nº ${data.cpf}, 
+            para fins da não retenção do imposto de renda de que trata o art. 27 da Lei nº 10.833, 
+            de 29 de dezembro de 2003, sobre rendimentos a serem recebidos em cumprimento de 
+            decisão da Justiça Federal, conforme Processo nº ${data.processo}, da ${data.vara} do ${data.tribunal} da
+            Seção/Subseção Judiciária de ${data.localidade}, pagos pelo(a) Banco do Brasil, declara que:
+        </div>
+        <div class="declaration-body">
+            (${x1}) o montante de ${data.valor} (${data.valorExtenso}) e devidos acréscimos constitui rendimento 
+            isento ou não tributável; <br>
+            (${x2}) está inscrita no Sistema Integrado de Pagamento de Impostos e Contribuições das 
+            Microempresas e das Empresas de Pequeno Porte (Simples).
+        </div>
+        <div class="declaration-body">
+            O(a) beneficiário(a) da decisão judicial assume total responsabilidade pelas informações acima.
+        </div><br><br>
+        <div class="right-aligned">${data.localidade}, ${data.currentDate}.</div>
+        <div class="signature-line">
+            <br><br>
+            __________________________________________________<br>
+            Assinatura do(a) beneficiário(a) ou de seu representante legal<br><br><br><br>
+            __________________________________________________<br>
+            Abono da assinatura pela instituição financeira
+        </div>
+    `;
+
+
+
+    const output = document.getElementById('output');
+    output.innerHTML = declarationTemplate;
+    output.style.display = "block";
+
+    // Automatically trigger print
+    setTimeout(() => {
+        window.print();
+    }, 500); // Delay to ensure the output is rendered before printing
+});
+    </script>
+</body>
+</html>
